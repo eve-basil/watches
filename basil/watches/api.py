@@ -36,22 +36,42 @@ class WatchResource(object):
 
     @staticmethod
     def on_put(req, resp, by_id):
-        raw_body = req.stream.read()
-        if not raw_body:
-            raise falcon.HTTPBadRequest('A valid JSON document is required.')
-        try:
-            body = json.loads(raw_body.decode('utf-8'))
-        except UnicodeDecodeError:
-            msg = 'Non-UTF8 characters found in the request body'
-            raise falcon.HTTPBadRequest(msg)
-        except ValueError as e:
-            msg = 'Could not parse the body as Json: {0}. Ignoring.'.format(e)
-            raise falcon.HTTPBadRequest(msg)
+        # handle input with media type: application/x-www-form-urlencoded
+        if 'name' in req.params:
+            name = req.get_param('name')
+        else:
+            body = WatchResource.read_body(req)
+            name = WatchResource.get_attr_from(body, 'name')
 
-        name = body['name']
         storage.Monitoring.create(req.context['session'], by_id, name)
         resp.add_link('/watches/%s' % by_id, 'self', title=name)
         resp.status = falcon.HTTP_201
+
+    @staticmethod
+    def get_attr_from(body, attr):
+        if attr in body:
+            value = body[attr]
+        else:
+            raise falcon.HTTPBadRequest('Bad Request Invalid JSON',
+                                        'Missing %s attribute'.format(attr))
+        return value
+
+    @staticmethod
+    def read_body(req):
+        raw_body = req.stream.read()
+        msg = 'A valid JSON document is required.'
+        if not raw_body:
+            raise falcon.HTTPBadRequest(msg, 'No body found')
+        try:
+            body = json.loads(raw_body.decode('utf-8'))
+        except UnicodeDecodeError:
+            raise falcon.HTTPBadRequest(msg, 'Non-UTF8 characters found'
+                                             ' in the request body')
+        except ValueError as e:
+            raise falcon.HTTPBadRequest(msg, 'Could not parse the body as'
+                                             ' Json: {0}. Ignoring.'
+                                        .format(e))
+        return body
 
     @staticmethod
     def on_delete(req, resp, by_id):
