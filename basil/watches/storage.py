@@ -71,10 +71,9 @@ class DBSessionFactory(object):
                 try:
                     logging.debug('Committing')
                     req.context['session'].commit()
-                except Exception as ex:
-                    logging.warn(ex.message)
+                except Exception:
                     logging.debug('Rolling Back due to sql error')
-                    raise ex
+                    raise
             elif resp_status >= 400:
                 logging.debug('Rolling Back: error status %d', resp_status)
             else:

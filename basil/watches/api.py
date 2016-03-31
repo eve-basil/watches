@@ -43,9 +43,17 @@ class WatchResource(object):
             body = WatchResource.read_body(req)
             name = WatchResource.get_attr_from(body, 'name')
 
-        storage.Monitoring.create(req.context['session'], by_id, name)
+        session = req.context['session']
+        existing = storage.Monitoring.get(session, by_id)
+        if existing:
+            if existing.name != name:
+                existing.name = name
+                session.add(existing)
+            resp.status = falcon.HTTP_204
+        else:
+            storage.Monitoring.create(session, by_id, name)
+            resp.status = falcon.HTTP_201
         resp.add_link('/watches/%s' % by_id, 'self', title=name)
-        resp.status = falcon.HTTP_201
 
     @staticmethod
     def get_attr_from(body, attr):
@@ -53,7 +61,7 @@ class WatchResource(object):
             value = body[attr]
         else:
             raise falcon.HTTPBadRequest('Bad Request Invalid JSON',
-                                        'Missing %s attribute'.format(attr))
+                                        'Missing %s attribute' % attr)
         return value
 
     @staticmethod
@@ -69,8 +77,7 @@ class WatchResource(object):
                                              ' in the request body')
         except ValueError as e:
             raise falcon.HTTPBadRequest(msg, 'Could not parse the body as'
-                                             ' Json: {0}. Ignoring.'
-                                        .format(e))
+                                             ' Json: {0}. Ignoring.' % e)
         return body
 
     @staticmethod
