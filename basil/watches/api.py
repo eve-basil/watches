@@ -7,11 +7,21 @@ import storage
 
 def create_api(middleware):
     app = falcon.API(middleware=middleware)
-    watches = WatchesResource()
-    app.add_route('/watches', watches)
-    watch = WatchResource()
-    app.add_route('/watches/{by_id}', watch)
+    app.add_route('/health', HealthResource())
+    app.add_route('/watches', WatchesResource())
+    app.add_route('/watches/{by_id}', WatchResource())
     return app
+
+
+class HealthResource(object):
+    @staticmethod
+    def on_get(req, resp):
+        pong = req.context['recipes'].ping()
+        record = req.context['session'].query(storage.Monitoring).first()
+        if pong and record:
+            resp.body = '{"status": "ok"}'
+            resp.status = falcon.HTTP_200
+        raise falcon.HTTPInternalServerError('Service Unavailable.', None)
 
 
 class WatchesResource(object):
