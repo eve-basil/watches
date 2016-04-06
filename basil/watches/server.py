@@ -16,6 +16,7 @@ def ensure_data(sessions):
         logging.critical('Could not connect to DB: %s', ex.message)
         os.exit(1)
 
+
 def initialize_app():
     verify_parameters()
 
